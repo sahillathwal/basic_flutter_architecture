@@ -1,49 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_basics/home_event.dart';
 
-class Home extends StatelessWidget {
+import 'home_modal.dart';
+import 'home_state.dart';
+
+class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  final model = HomeModal();
+
+  @override
+  void initState() {
+    model.dispatch(FetchData());
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            model.dispatch(FetchData(hasData: false, hasError: false));
+          },
+        ),
         backgroundColor: Colors.grey[900],
-        body: FutureBuilder<List<String>>(
-            future: _getListData(hasData: true),
+        body: StreamBuilder(
+            stream: model.homeState,
             builder: (buildContext, snapshot) {
               if (snapshot.hasError) {
                 return _getInformationMessage(snapshot.error.toString());
               }
 
-              if (!snapshot.hasData) {
+              var homeState = snapshot.data;
+
+              if (!snapshot.hasData || homeState == BusyHomeState) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              var listItems = snapshot.data;
-
-              if (listItems!.isEmpty) {
-                return _getInformationMessage('No data found');
+              if (homeState is DataFetchedHomeState) {
+                if (!homeState.hasData) {
+                  return _getInformationMessage('No data found');
+                }
               }
 
-              return ListView.builder(
-                itemCount: listItems.length,
-                itemBuilder: (context, index) =>
-                    _getListItemUi(index, listItems),
-              );
+              if (homeState is DataFetchedHomeState) {
+                return ListView.builder(
+                  itemCount: homeState.data.length,
+                  itemBuilder: (context, index) =>
+                      _getListItemUi(index, homeState.data),
+                );
+              } else {
+                return const Center(child: CircularProgressIndicator());
+              }
             }));
-  }
-
-// Return a list of data after 1 second to emulate network request
-  Future<List<String>> _getListData(
-      {bool hasError = false, hasData = true}) async {
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (hasError) {
-      return Future.error('Error fetching data');
-    }
-
-    if (!hasData) return [];
-
-    return List<String>.generate(10, (index) => '$index title');
   }
 
   Widget _getListItemUi(int index, List<String>? listItems) {
