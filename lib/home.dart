@@ -1,45 +1,35 @@
 import 'package:flutter/material.dart';
 
-class Home extends StatefulWidget {
+class Home extends StatelessWidget {
   const Home({Key? key}) : super(key: key);
-
-  @override
-  State<Home> createState() => _HomeState();
-}
-
-class _HomeState extends State<Home> {
-  List<String>? _pageData;
-  bool get _fetchingData => _pageData == null;
-
-  @override
-  void initState() {
-    _getListData(hasData: false)
-        .then((data) => setState(() {
-              if (data.isEmpty) {
-                data.add("No data available");
-                // _pageData = ['No data available'];
-              }
-              _pageData = data;
-            }))
-        .catchError((error) => setState(() {
-              _pageData = [error];
-            }));
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[900],
-      body: _fetchingData
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : ListView.builder(
-              itemCount: _pageData?.length,
-              itemBuilder: (context, index) => _getListItemUi(index),
-            ),
-    );
+        backgroundColor: Colors.grey[900],
+        body: FutureBuilder<List<String>>(
+            future: _getListData(hasData: true),
+            builder: (buildContext, snapshot) {
+              if (snapshot.hasError) {
+                return _getInformationMessage(snapshot.error.toString());
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              var listItems = snapshot.data;
+
+              if (listItems!.isEmpty) {
+                return _getInformationMessage('No data found');
+              }
+
+              return ListView.builder(
+                itemCount: listItems.length,
+                itemBuilder: (context, index) =>
+                    _getListItemUi(index, listItems),
+              );
+            }));
   }
 
 // Return a list of data after 1 second to emulate network request
@@ -56,7 +46,7 @@ class _HomeState extends State<Home> {
     return List<String>.generate(10, (index) => '$index title');
   }
 
-  Widget _getListItemUi(int index) {
+  Widget _getListItemUi(int index, List<String>? listItems) {
     return Container(
       margin: const EdgeInsets.all(5.0),
       height: 50.0,
@@ -64,11 +54,21 @@ class _HomeState extends State<Home> {
           borderRadius: BorderRadius.circular(5.0), color: Colors.grey[600]),
       child: Center(
         child: Text(
-          _pageData![index],
+          listItems![index],
           style: const TextStyle(
             color: Colors.white,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _getInformationMessage(String message) {
+    return Center(
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(fontWeight: FontWeight.w900, color: Colors.grey[500]),
       ),
     );
   }
